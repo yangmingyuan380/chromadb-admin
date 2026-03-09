@@ -1,5 +1,9 @@
 import { ChromaClient, DefaultEmbeddingFunction } from 'chromadb'
 
+import { resolveLocalChromaUrl } from '@/lib/server/chromaBridge'
+
+import type { ConnectionMode } from '@/lib/types'
+
 enum IncludeEnum {
   Documents = 'documents',
   Embeddings = 'embeddings',
@@ -12,6 +16,25 @@ type Auth = {
   token: string
   username: string
   password: string
+}
+
+async function createChromaClient(
+  connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
+  auth: Auth,
+  tenant: string,
+  database: string
+) {
+  const path =
+    connectionMode === 'local' ? await resolveLocalChromaUrl(connectionString, chromaCliBin) : connectionString
+
+  return new ChromaClient({
+    path,
+    auth: connectionMode === 'local' ? undefined : formatAuth(auth),
+    database: database,
+    tenant: tenant,
+  })
 }
 
 function formatAuth(auth: Auth) {
@@ -31,13 +54,15 @@ function formatAuth(auth: Auth) {
   }
 }
 
-export async function fetchCollections(connectionString: string, auth: Auth, tenant: string, database: string) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+export async function fetchCollections(
+  connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
+  auth: Auth,
+  tenant: string,
+  database: string
+) {
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const collections = await client.listCollections()
 
@@ -48,18 +73,15 @@ const PAGE_SIZE = 20
 
 export async function fetchRecords(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   page: number,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const collection = await client.getCollection({ name: collectionName, embeddingFunction: embeddingFunction })
@@ -86,18 +108,15 @@ type queryErrorResponse = {
 
 export async function queryRecords(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   queryEmbeddings: number[],
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const collection = await client.getCollection({ name: collectionName, embeddingFunction: embeddingFunction })
@@ -125,18 +144,15 @@ export async function queryRecords(
 
 export async function queryRecordsText(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   queryTexts: string,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const collection = await client.getCollection({ name: collectionName, embeddingFunction: embeddingFunction })
@@ -170,17 +186,14 @@ export async function queryRecordsText(
 
 export async function countRecord(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const collection = await client.getCollection({ name: collectionName, embeddingFunction: embeddingFunction })
@@ -190,18 +203,15 @@ export async function countRecord(
 
 export async function deleteRecord(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   recordId: string,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const collection = await client.getCollection({ name: collectionName, embeddingFunction: embeddingFunction })
@@ -213,17 +223,14 @@ export async function deleteRecord(
 
 export async function deleteCollection(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   collectionName: string,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   await client.deleteCollection({ name: collectionName })
 
@@ -232,18 +239,15 @@ export async function deleteCollection(
 
 export async function updateCollection(
   connectionString: string,
+  connectionMode: ConnectionMode,
+  chromaCliBin: string,
   auth: Auth,
   oldName: string,
   newName: string,
   tenant: string,
   database: string
 ) {
-  const client = new ChromaClient({
-    path: connectionString,
-    auth: formatAuth(auth),
-    database: database,
-    tenant: tenant,
-  })
+  const client = await createChromaClient(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
 
   const embeddingFunction = new DefaultEmbeddingFunction()
   const oldCollection = await client.getCollection({ name: oldName, embeddingFunction: embeddingFunction })

@@ -1,19 +1,47 @@
 import { NextResponse } from 'next/server'
 
-import { extractAuth, extractConnectionString, extractDatabase, extractTenant } from '@/lib/server/params'
+import {
+  extractAuth,
+  extractChromaCliBin,
+  extractConnectionMode,
+  extractConnectionString,
+  extractDatabase,
+  extractTenant,
+} from '@/lib/server/params'
 import { countRecord, fetchRecords, queryRecords, queryRecordsText, deleteRecord } from '@/lib/server/db'
+
+export const runtime = 'nodejs'
 
 // without query embeddings
 export async function GET(request: Request, { params }: { params: { collectionName: string } }) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const page = extractPage(request)
   const tenant = extractTenant(request)
   const database = extractDatabase(request)
 
   try {
-    const data = await fetchRecords(connectionString, auth, params.collectionName, page, tenant, database)
-    const totalCount = await countRecord(connectionString, auth, params.collectionName, tenant, database)
+    const data = await fetchRecords(
+      connectionString,
+      connectionMode,
+      chromaCliBin,
+      auth,
+      params.collectionName,
+      page,
+      tenant,
+      database
+    )
+    const totalCount = await countRecord(
+      connectionString,
+      connectionMode,
+      chromaCliBin,
+      auth,
+      params.collectionName,
+      tenant,
+      database
+    )
 
     return NextResponse.json({
       total: totalCount,
@@ -35,6 +63,8 @@ export async function GET(request: Request, { params }: { params: { collectionNa
 
 export async function POST(request: Request, { params }: { params: { collectionName: string } }) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const queryInput = await extractQuery(request)
   const tenant = extractTenant(request)
@@ -42,12 +72,30 @@ export async function POST(request: Request, { params }: { params: { collectionN
 
   try {
     if (Array.isArray(queryInput)) {
-      const data = await queryRecords(connectionString, auth, params.collectionName, queryInput, tenant, database)
+      const data = await queryRecords(
+        connectionString,
+        connectionMode,
+        chromaCliBin,
+        auth,
+        params.collectionName,
+        queryInput,
+        tenant,
+        database
+      )
       return NextResponse.json({
         records: data,
       })
     } else {
-      const data = await queryRecordsText(connectionString, auth, params.collectionName, queryInput, tenant, database)
+      const data = await queryRecordsText(
+        connectionString,
+        connectionMode,
+        chromaCliBin,
+        auth,
+        params.collectionName,
+        queryInput,
+        tenant,
+        database
+      )
       return NextResponse.json({
         records: data,
       })
@@ -113,6 +161,8 @@ async function extractQuery(request: Request): Promise<number[] | string> {
 // DELETE method to delete a record by ID
 export async function DELETE(request: Request, { params }: { params: { collectionName: string } }) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const tenant = extractTenant(request)
   const database = extractDatabase(request)
@@ -130,7 +180,16 @@ export async function DELETE(request: Request, { params }: { params: { collectio
       )
     }
 
-    await deleteRecord(connectionString, auth, params.collectionName, recordId, tenant, database)
+    await deleteRecord(
+      connectionString,
+      connectionMode,
+      chromaCliBin,
+      auth,
+      params.collectionName,
+      recordId,
+      tenant,
+      database
+    )
 
     return NextResponse.json({
       success: true,

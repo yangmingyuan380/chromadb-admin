@@ -1,16 +1,27 @@
 import { NextResponse } from 'next/server'
 
-import { extractAuth, extractConnectionString, extractDatabase, extractTenant } from '@/lib/server/params'
+import {
+  extractAuth,
+  extractChromaCliBin,
+  extractConnectionMode,
+  extractConnectionString,
+  extractDatabase,
+  extractTenant,
+} from '@/lib/server/params'
 import { fetchCollections, deleteCollection, updateCollection } from '@/lib/server/db'
+
+export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const tenant = extractTenant(request)
   const database = extractDatabase(request)
 
   try {
-    const data = await fetchCollections(connectionString, auth, tenant, database)
+    const data = await fetchCollections(connectionString, connectionMode, chromaCliBin, auth, tenant, database)
     return NextResponse.json(data)
   } catch (error: any) {
     if (error.status === 401 || error.status === 403) {
@@ -25,6 +36,8 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const tenant = extractTenant(request)
   const database = extractDatabase(request)
@@ -42,7 +55,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    await deleteCollection(connectionString, auth, collectionName, tenant, database)
+    await deleteCollection(connectionString, connectionMode, chromaCliBin, auth, collectionName, tenant, database)
 
     return NextResponse.json({
       success: true,
@@ -60,6 +73,8 @@ export async function DELETE(request: Request) {
 
 export async function PATCH(request: Request) {
   const connectionString = extractConnectionString(request)
+  const chromaCliBin = extractChromaCliBin(request)
+  const connectionMode = extractConnectionMode(request)
   const auth = extractAuth(request)
   const tenant = extractTenant(request)
   const database = extractDatabase(request)
@@ -86,7 +101,16 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const result = await updateCollection(connectionString, auth, oldName, newName, tenant, database)
+    const result = await updateCollection(
+      connectionString,
+      connectionMode,
+      chromaCliBin,
+      auth,
+      oldName,
+      newName,
+      tenant,
+      database
+    )
 
     return NextResponse.json({
       success: true,

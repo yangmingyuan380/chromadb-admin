@@ -12,23 +12,64 @@ export function useGetConfig() {
   })
 }
 
-function authParamsString(config?: AppConfig) {
-  if (config?.authType === 'basic') {
-    return `&authType=basic&&username=${config.username}&password=${config.password}`
-  } else if (config?.authType === 'token') {
-    return `&authType=token&&token=${config.token}`
-  } else {
-    return ''
+function buildSearchParams(config?: AppConfig, extraParams?: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams()
+
+  if (config?.connectionString) {
+    searchParams.set('connectionString', config.connectionString)
   }
+
+  if (config?.chromaCliBin) {
+    searchParams.set('chromaCliBin', config.chromaCliBin)
+  }
+
+  if (config?.connectionMode) {
+    searchParams.set('connectionMode', config.connectionMode)
+  }
+
+  if (config?.tenant) {
+    searchParams.set('tenant', config.tenant)
+  }
+
+  if (config?.database) {
+    searchParams.set('database', config.database)
+  }
+
+  if (config?.authType === 'basic') {
+    searchParams.set('authType', 'basic')
+    searchParams.set('username', config.username)
+    searchParams.set('password', config.password)
+  } else if (config?.authType === 'token') {
+    searchParams.set('authType', 'token')
+    searchParams.set('token', config.token)
+  }
+
+  for (const [key, value] of Object.entries(extraParams ?? {})) {
+    if (value !== undefined && value !== '') {
+      searchParams.set(key, String(value))
+    }
+  }
+
+  return searchParams.toString()
+}
+
+function buildApiUrl(path: string, config?: AppConfig, extraParams?: Record<string, string | number | undefined>) {
+  const searchParams = buildSearchParams(config, extraParams)
+  return searchParams ? `${path}?${searchParams}` : path
 }
 
 export function useGetCollections(config?: AppConfig) {
   return useQuery({
-    queryKey: ['config', config?.connectionString, 'collections'],
+    queryKey: [
+      'config',
+      config?.connectionMode,
+      config?.connectionString,
+      config?.tenant,
+      config?.database,
+      'collections',
+    ],
     queryFn: async (): Promise<Collection[]> => {
-      const response = await fetch(
-        `/api/collections?connectionString=${config?.connectionString}${authParamsString(config)}&tenant=${config?.tenant}&database=${config?.database}`
-      )
+      const response = await fetch(buildApiUrl('/api/collections', config))
       if (!response.ok) {
         throw new Error(`API getCollections returns response code: ${response.status}, message: ${response.statusText}`)
       }
@@ -41,21 +82,26 @@ export function useGetCollections(config?: AppConfig) {
 
 export function useGetCollectionRecords(config?: AppConfig, collectionName?: string, page?: number, query?: string) {
   return useQuery({
-    queryKey: ['collections', collectionName, 'records', query, page],
+    queryKey: [
+      'collections',
+      config?.connectionMode,
+      config?.connectionString,
+      config?.tenant,
+      config?.database,
+      collectionName,
+      'records',
+      query,
+      page,
+    ],
     queryFn: async (): Promise<QueryResult> => {
       if (query === undefined || query === '') {
-        const response = await fetch(
-          `/api/collections/${collectionName}/records?connectionString=${config?.connectionString}&tenant=${config?.tenant}&database=${config?.database}&page=${page}&query=${query}${authParamsString(config)}`
-        )
+        const response = await fetch(buildApiUrl(`/api/collections/${collectionName}/records`, config, { page }))
         return response.json()
       } else {
-        const response = await fetch(
-          `/api/collections/${collectionName}/records?connectionString=${config?.connectionString}&tenant=${config?.tenant}&database=${config?.database}&authType=${config?.authType}${authParamsString(config)}`,
-          {
-            method: 'POST',
-            body: JSON.stringify({ query: query }),
-          }
-        )
+        const response = await fetch(buildApiUrl(`/api/collections/${collectionName}/records`, config), {
+          method: 'POST',
+          body: JSON.stringify({ query: query }),
+        })
         return response.json()
       }
     },
@@ -70,16 +116,13 @@ export function useDeleteRecord(collectionName: string) {
 
   return useMutation({
     mutationFn: async (recordId: string) => {
-      const response = await fetch(
-        `/api/collections/${collectionName}/records?connectionString=${config?.connectionString}&tenant=${config?.tenant}&database=${config?.database}${authParamsString(config)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ id: recordId }),
-        }
-      )
+      const response = await fetch(buildApiUrl(`/api/collections/${collectionName}/records`, config), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: recordId }),
+      })
 
       if (!response.ok) {
         const error = await response.json()
@@ -90,7 +133,7 @@ export function useDeleteRecord(collectionName: string) {
     },
     onSuccess: () => {
       // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ['collections', collectionName, 'records'] })
+      queryClient.invalidateQueries({ queryKey: ['collections', config?.connectionMode, config?.connectionString] })
     },
   })
 }
@@ -122,16 +165,13 @@ export function useDeleteCollection() {
 
   return useMutation({
     mutationFn: async (collectionName: string) => {
-      const response = await fetch(
-        `/api/collections?connectionString=${config?.connectionString}&tenant=${config?.tenant}&database=${config?.database}${authParamsString(config)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name: collectionName }),
-        }
-      )
+      const response = await fetch(buildApiUrl('/api/collections', config), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: collectionName }),
+      })
 
       if (!response.ok) {
         const error = await response.json()
@@ -141,7 +181,16 @@ export function useDeleteCollection() {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['config', config?.connectionString, 'collections'] })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'config',
+          config?.connectionMode,
+          config?.connectionString,
+          config?.tenant,
+          config?.database,
+          'collections',
+        ],
+      })
     },
   })
 }
@@ -152,16 +201,13 @@ export function useRenameCollection() {
 
   return useMutation({
     mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
-      const response = await fetch(
-        `/api/collections?connectionString=${config?.connectionString}&tenant=${config?.tenant}&database=${config?.database}${authParamsString(config)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ oldName, newName }),
-        }
-      )
+      const response = await fetch(buildApiUrl('/api/collections', config), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ oldName, newName }),
+      })
 
       if (!response.ok) {
         const error = await response.json()
@@ -171,7 +217,16 @@ export function useRenameCollection() {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['config', config?.connectionString, 'collections'] })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'config',
+          config?.connectionMode,
+          config?.connectionString,
+          config?.tenant,
+          config?.database,
+          'collections',
+        ],
+      })
     },
   })
 }

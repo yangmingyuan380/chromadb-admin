@@ -5,10 +5,27 @@ const localStorageItemKey = 'chromadb-admin-config'
 export function getConfig(): AppConfig {
   const config = window.localStorage.getItem(localStorageItemKey)
   if (config) {
-    return JSON.parse(config)
+    const parsedConfig = JSON.parse(config)
+    return {
+      connectionMode: 'remote',
+      connectionString: '',
+      chromaCliBin: '',
+      currentCollection: '',
+      authType: 'no_auth',
+      token: '',
+      username: '',
+      password: '',
+      tenant: 'default_tenant',
+      database: 'default_database',
+      embeddingModelUrl: '',
+      embeddingModel: 'text-embedding-3-small',
+      ...parsedConfig,
+    }
   } else {
     return {
+      connectionMode: 'remote',
       connectionString: '',
+      chromaCliBin: '',
       currentCollection: '',
       authType: 'no_auth',
       token: '',
@@ -29,7 +46,9 @@ export function updateConfig(config: AppConfig) {
 
 export function updateConnectionString(connectionString: string) {
   const config = getConfig() || {
+    connectionMode: 'remote',
     connectionString: '',
+    chromaCliBin: '',
     currentCollection: '',
     authType: '',
     token: '',

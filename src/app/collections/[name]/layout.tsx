@@ -25,6 +25,14 @@ import { useGetCollections, useGetConfig, useDeleteCollection, useRenameCollecti
 
 import type { ReactNode } from 'react'
 
+function getConnectionSummary(connectionMode: string | undefined, connectionString: string) {
+  if (connectionMode === 'local') {
+    return `local:${connectionString}`
+  }
+
+  return connectionString
+}
+
 export default function Layout({ children, params }: { children: ReactNode; params: { name: string } }) {
   const router = useRouter()
   const { data: config } = useGetConfig()
@@ -149,7 +157,7 @@ export default function Layout({ children, params }: { children: ReactNode; para
             <Group>
               {config && (
                 <Group gap="xs" c="dimmed">
-                  <Text size="sm">{config.connectionString}</Text>
+                  <Text size="sm">{getConnectionSummary(config.connectionMode, config.connectionString)}</Text>
                   <Text size="sm">/</Text>
                   <Text size="sm">{config.tenant}</Text>
                   <Text size="sm">/</Text>

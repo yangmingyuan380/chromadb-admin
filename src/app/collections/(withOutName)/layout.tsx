@@ -10,6 +10,14 @@ import { useGetConfig } from '@/lib/client/query'
 
 import type { ReactNode } from 'react'
 
+function getConnectionSummary(connectionMode: string | undefined, connectionString?: string) {
+  if (!connectionString) {
+    return ''
+  }
+
+  return connectionMode === 'local' ? `local:${connectionString}` : connectionString
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { data: config } = useGetConfig()
@@ -29,7 +37,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </Group>
           <Group>
             <Text size="sm" c="dimmed">
-              {config?.connectionString}
+              {getConnectionSummary(config?.connectionMode, config?.connectionString)}
             </Text>
             <Anchor component={Link} href="/setup" title={'Setup'}>
               <ActionIcon variant="default" aria-label="Settings" size={'lg'}>

@@ -29,6 +29,26 @@ bun dev
 
 THen, open [http://localhost:3001](http://localhost:3001) in your browser to see the app.
 
+## Connect to local embedded Chroma
+
+This UI now supports two connection modes:
+
+- `Remote Server URL`: connect to an existing Chroma HTTP server.
+- `Local Persistent Directory`: point the UI at a local Chroma data directory that contains `chroma.sqlite3`.
+
+For local embedded mode, the app does **not** read SQLite/HNSW files directly. Instead, the server side starts a loopback-only bridge with:
+
+```bash
+chroma run --path /path/to/chroma-data
+```
+
+Requirements:
+
+- The `chroma` CLI must be available in `PATH`, or set `CHROMA_CLI_BIN` to the full executable path.
+- The selected directory must contain `chroma.sqlite3`.
+
+This matches Chroma's current JavaScript/TypeScript client model, which talks to a server instead of opening the persisted directory directly.
+
 ## Run with Docker
 
 Run

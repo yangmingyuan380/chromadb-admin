@@ -1,5 +1,9 @@
+export type ConnectionMode = 'remote' | 'local'
+
 export type AppConfig = {
+  connectionMode: ConnectionMode
   connectionString: string
+  chromaCliBin: string
   currentCollection: string
   authType: string
   token: string
